@@ -1,0 +1,221 @@
+@import "tailwindcss";
+
+@layer base {
+  :root {
+    /* Surface / Background */
+    --color-bg: #FFFBFE;
+    --color-surface: #F7F2FA;
+    --color-surface-variant: #E8DEF8;
+    --color-surface-dim: #E7E0EC;
+    --color-surface-bright: #FFFBFE;
+
+    /* Primary */
+    --color-primary: #6750A4;
+    --color-primary-hover: #7C6BBF;
+    --color-primary-container: #E8DEF8;
+    --color-primary-container-hover: #D0BCFF;
+    --color-on-primary: #FFFFFF;
+    --color-on-primary-container: #6750A4;
+
+    /* Text */
+    --color-on-bg: #1C1B1F;
+    --color-on-surface: #1C1B1F;
+    --color-on-surface-variant: #49454F;
+    --color-outline: #79747E;
+
+    /* Error */
+    --color-error: #B3261E;
+    --color-error-hover: #C94038;
+    --color-error-bg: #FFF0EE;
+
+    /* Success */
+    --color-success: #4CAF50;
+
+    /* Warning */
+    --color-warning: #FF9800;
+
+    /* Muted */
+    --color-muted: #78909C;
+
+    /* Overlay */
+    --color-overlay: rgba(0, 0, 0, 0.30);
+    --color-progress-track: rgba(0, 0, 0, 0.20);
+
+    /* Gradient */
+    --color-gradient-from: #F7F2FA;
+    --color-gradient-to: #FFFBFE;
+
+    /* Scrollbar */
+    --color-scrollbar-thumb: #CAC4D0;
+    --color-scrollbar-thumb-hover: #938F99;
+
+    /* Card shadow */
+    --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.08);
+    --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.15);
+    --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.12);
+    --shadow-fab: 0 6px 20px rgba(103, 80, 164, 0.35);
+
+    /* Bookshelf wall */
+    --color-wall-glow: rgba(247, 242, 250, 0.6);
+    --color-wall-grain: rgba(0, 0, 0, 0.015);
+  }
+
+  .dark {
+    /* Surface / Background */
+    --color-bg: #1C1B1F;
+    --color-surface: #2B2930;
+    --color-surface-variant: #36343B;
+    --color-surface-dim: #36343B;
+    --color-surface-bright: #2B2930;
+
+    /* Primary */
+    --color-primary: #D0BCFF;
+    --color-primary-hover: #E8DEFF;
+    --color-primary-container: #4F378B;
+    --color-primary-container-hover: #6750A4;
+    --color-on-primary: #381E72;
+    --color-on-primary-container: #E8DEF8;
+
+    /* Text */
+    --color-on-bg: #E6E1E5;
+    --color-on-surface: #E6E1E5;
+    --color-on-surface-variant: #CAC4D0;
+    --color-outline: #938F99;
+
+    /* Error */
+    --color-error: #F2B8B5;
+    --color-error-hover: #F9DEDC;
+    --color-error-bg: #3B1C1A;
+
+    /* Success */
+    --color-success: #81C784;
+
+    /* Warning */
+    --color-warning: #FFB74D;
+
+    /* Muted */
+    --color-muted: #90A4AE;
+
+    /* Overlay */
+    --color-overlay: rgba(0, 0, 0, 0.55);
+    --color-progress-track: rgba(255, 255, 255, 0.15);
+
+    /* Gradient */
+    --color-gradient-from: #2B2930;
+    --color-gradient-to: #1C1B1F;
+
+    /* Scrollbar */
+    --color-scrollbar-thumb: #49454F;
+    --color-scrollbar-thumb-hover: #625B71;
+
+    /* Card shadow */
+    --shadow-card: 0 4px 12px rgba(0, 0, 0, 0.30);
+    --shadow-card-hover: 0 8px 24px rgba(0, 0, 0, 0.45);
+    --shadow-elevated: 0 8px 32px rgba(0, 0, 0, 0.50);
+    --shadow-fab: 0 6px 20px rgba(208, 188, 255, 0.25);
+
+    /* Bookshelf wall */
+    --color-wall-glow: rgba(43, 41, 48, 0.8);
+    --color-wall-grain: rgba(255, 255, 255, 0.012);
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: var(--color-bg);
+    color: var(--color-on-bg);
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  /* Bookshelf wall background texture */
+  .bookshelf-wall {
+    background-color: var(--color-bg);
+    background-image:
+      radial-gradient(
+        ellipse at 20% 50%,
+        var(--color-wall-glow) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        ellipse at 80% 30%,
+        var(--color-wall-glow) 0%,
+        transparent 50%
+      ),
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 2px,
+        var(--color-wall-grain) 2px,
+        var(--color-wall-grain) 3px
+      );
+    transition: background-color 0.3s ease;
+  }
+
+  /* Hide scrollbar for tabs */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Custom scrollbar for modals */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: var(--color-scrollbar-thumb);
+    border-radius: 3px;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--color-scrollbar-thumb-hover);
+  }
+
+  /* Range input track for Firefox */
+  input[type="range"] {
+    -moz-appearance: none;
+    appearance: none;
+  }
+
+  input[type="range"]::-moz-range-track {
+    background: transparent;
+    border: none;
+    height: 8px;
+  }
+
+  /* Entrance animation for modals */
+  @keyframes animate-in {
+    from {
+      opacity: 0;
+      transform: scale(0.95) translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1) translateY(0);
+    }
+  }
+
+  .animate-in {
+    animation: animate-in 0.2s ease-out;
+  }
+
+  /* Shimmer animation for progress bars */
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  /* Smooth theme transition for key elements */
+  .theme-transition {
+    transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+  }
+}
