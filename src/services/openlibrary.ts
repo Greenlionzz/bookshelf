@@ -8,9 +8,8 @@ export const OpenLibraryService = {
     const encoded = encodeURIComponent(query.trim());
     const res = await fetch(`${BASE_URL}/search.json?q=${encoded}&limit=20&fields=key,title,author_name,first_publish_year,cover_i,edition_count`);
     const data = await res.json();
-
     return (data.docs || []).map((doc: any) => ({
-      key: doc.key, // e.g. "/works/OL12345W"
+      key: doc.key,
       title: doc.title || 'Unknown Title',
       author: doc.author_name ? doc.author_name[0] : 'Unknown Author',
       coverUrl: doc.cover_i
@@ -22,37 +21,42 @@ export const OpenLibraryService = {
   },
 
   async getWorkDetails(workKey: string): Promise<BookDetails> {
-    // workKey is like "/works/OL12345W"
-    const workRes = await fetch(`${BASE_URL}${workKey}.json`);
-    const workData = await workRes.json();
+    // 🚀 THE FIX: Fire Work and Editions requests at the exact same time!
+    const [workRes, editionsRes] = await Promise.allSettled([
+      fetch(`${BASE_URL}${workKey}.json`),
+      fetch(`${BASE_URL}${workKey}/editions.json?limit=5`)
+    ]);
 
-    // Try to get editions for page count and publish date
+    // If the main work fetch fails, we can't proceed
+    if (workRes.status === 'rejected') {
+      throw new Error('Failed to fetch main work details');
+    }
+    
+    const workData = await workRes.value.json();
+
     let totalPages = 0;
     let publishDate = '';
     let coverUrl = '';
 
-    try {
-      const editionsRes = await fetch(`${BASE_URL}${workKey}/editions.json?limit=5`);
-      const editionsData = await editionsRes.json();
-      const editions = editionsData.entries || [];
-
-      for (const edition of editions) {
-        if (!totalPages && edition.number_of_pages) {
-          totalPages = edition.number_of_pages;
+    // Process editions if they successfully loaded in parallel
+    if (editionsRes.status === 'fulfilled' && editionsRes.value.ok) {
+      try {
+        const editionsData = await editionsRes.value.json();
+        const editions = editionsData.entries || [];
+        for (const edition of editions) {
+          if (!totalPages && edition.number_of_pages) totalPages = edition.number_of_pages;
+          if (!publishDate && edition.publish_date) publishDate = edition.publish_date;
+          if (!coverUrl && edition.covers && edition.covers.length > 0) {
+            coverUrl = `https://covers.openlibrary.org/b/id/${edition.covers[0]}-L.jpg`;
+          }
+          if (totalPages && publishDate && coverUrl) break;
         }
-        if (!publishDate && edition.publish_date) {
-          publishDate = edition.publish_date;
-        }
-        if (!coverUrl && edition.covers && edition.covers.length > 0) {
-          coverUrl = `https://covers.openlibrary.org/b/id/${edition.covers[0]}-L.jpg`;
-        }
-        if (totalPages && publishDate && coverUrl) break;
+      } catch {
+        // Editions parsing failed, but we won't let it crash the app
       }
-    } catch {
-      // Editions fetch failed, continue with what we have
     }
 
-    // Fallback cover from work
+    // Fallback cover from main work
     if (!coverUrl && workData.covers && workData.covers.length > 0) {
       coverUrl = `https://covers.openlibrary.org/b/id/${workData.covers[0]}-L.jpg`;
     }
@@ -65,7 +69,7 @@ export const OpenLibraryService = {
         : workData.description.value || '';
     }
 
-    // Extract author
+    // ⏳ We still fetch the author sequentially here because we need the authorKey from the Work data first.
     let author = 'Unknown Author';
     if (workData.authors && workData.authors.length > 0) {
       const authorRef = workData.authors[0].author?.key || workData.authors[0].key;
