@@ -13,13 +13,12 @@ function AppContent() {
   const [showSearch, setShowSearch] = useState(false);
   const [showManualAdd, setShowManualAdd] = useState(false);
   const [selectedSearchResult, setSelectedSearchResult] = useState<SearchResult | null>(null);
-  
-  // 👇 New state to remember which API was used!
   const [selectedApiSource, setSelectedApiSource] = useState<'google' | 'openlibrary'>('google');
-  
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
+  
+  // 👈 1. New state to hold the book being edited
+  const [editingBook, setEditingBook] = useState<Book | null>(null);
 
-  // 👇 Updated to catch both the result AND the source from SearchModal
   const handleSearchSelect = (result: SearchResult, source: 'google' | 'openlibrary') => {
     setShowSearch(false);
     setSelectedSearchResult(result);
@@ -30,14 +29,17 @@ function AppContent() {
     setSelectedSearchResult(null);
   };
 
+  // 👈 2. Updated handler to clear both states
   const handleManualSaved = () => {
     setShowManualAdd(false);
+    setEditingBook(null);
   };
 
   return (
     <div className="min-h-screen theme-transition bookshelf-wall" style={{ backgroundColor: 'var(--color-bg)' }}>
       <Navbar />
       <BookGrid onBookClick={setSelectedBook} />
+      
       <FAB
         onSearchClick={() => setShowSearch(true)}
         onManualClick={() => setShowManualAdd(true)}
@@ -53,15 +55,17 @@ function AppContent() {
       {selectedSearchResult && (
         <CustomizeModal
           searchResult={selectedSearchResult}
-          apiSource={selectedApiSource} // 👈 Passing the chosen API down to the modal!
+          apiSource={selectedApiSource}
           onClose={() => setSelectedSearchResult(null)}
           onSaved={handleCustomizeSaved}
         />
       )}
 
-      {showManualAdd && (
+      {/* 👈 3. Now shows if manual button is clicked OR if editingBook exists */}
+      {(showManualAdd || editingBook) && (
         <ManualAddModal
-          onClose={() => setShowManualAdd(false)}
+          initialBook={editingBook || undefined} // Passes the book data if we are editing
+          onClose={handleManualSaved}
           onSaved={handleManualSaved}
         />
       )}
@@ -70,6 +74,11 @@ function AppContent() {
         <DetailView
           book={selectedBook}
           onClose={() => setSelectedBook(null)}
+          // 👈 4. Triggered when you hit the edit pencil in DetailView
+          onEdit={(book) => {
+            setSelectedBook(null); // Close the detail view first
+            setEditingBook(book);  // Open the manual modal with the book's data
+          }}
         />
       )}
     </div>

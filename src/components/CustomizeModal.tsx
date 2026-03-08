@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { supabase } from '@/lib/supabase';
 import { OpenLibraryService } from '@/services/openlibrary';
-import { GoogleBooksService } from '@/services/googlebooks'; // 👈 1. Added Google Books
+import { GoogleBooksService } from '@/services/googlebooks';
 import { SearchResult, ReadingStatus } from '@/types/book';
 import { useBooks } from '@/context/BookContext';
-import { X, Loader2, BookOpen, Save, ImagePlus } from 'lucide-react';
+import { X, Loader2, BookOpen, Save, ImagePlus, UploadCloud } from 'lucide-react';
 
 interface Props {
   searchResult: SearchResult;
-  apiSource: 'google' | 'openlibrary'; // 👈 2. Added the new prop
+  apiSource: 'google' | 'openlibrary';
   onClose: () => void;
   onSaved: () => void;
 }
@@ -21,8 +22,12 @@ const statusOptions: { id: ReadingStatus; label: string }[] = [
 
 export default function CustomizeModal({ searchResult, apiSource, onClose, onSaved }: Props) {
   const { addBook, activeTab } = useBooks();
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
+
+  // Form States
   const [title, setTitle] = useState(searchResult.title);
   const [author, setAuthor] = useState(searchResult.author);
   const [coverUrl, setCoverUrl] = useState(searchResult.coverUrl);
@@ -35,16 +40,15 @@ export default function CustomizeModal({ searchResult, apiSource, onClose, onSav
 
   useEffect(() => {
     let cancelled = false;
-
     async function fetchDetails() {
       setLoading(true);
       try {
-        // 👈 3. The Traffic Cop: Route the request to the correct API!
         const details = apiSource === 'google'
           ? await GoogleBooksService.getWorkDetails(searchResult.key)
           : await OpenLibraryService.getWorkDetails(searchResult.key);
-
+        
         if (cancelled) return;
+        
         setTitle(details.title);
         setAuthor(details.author);
         if (details.coverUrl) setCoverUrl(details.coverUrl);
@@ -53,26 +57,54 @@ export default function CustomizeModal({ searchResult, apiSource, onClose, onSav
         setDescription(details.description);
         setOpenLibraryKey(details.openLibraryKey);
       } catch {
-        // Keep the search result data if the deep fetch fails
+        // Fallback to basic search result info
       }
       if (!cancelled) setLoading(false);
     }
-
     fetchDetails();
     return () => { cancelled = true; };
-  }, [searchResult.key, apiSource]); // Don't forget to add apiSource to the dependency array!
+  }, [searchResult.key, apiSource]);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    try {
+      setUploading(true);
+      const file = e.target.files?.[0];
+      if (!file) return;
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('book-covers')
+        .upload(fileName, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage
+        .from('book-covers')
+        .getPublicUrl(fileName);
+
+      setCoverUrl(data.publicUrl);
+    } catch (error: any) {
+      alert(`Upload failed: ${error.message}`);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSave = () => {
+    if (!title.trim()) return;
     addBook({
-      title,
-      author,
-      coverUrl,
-      totalPages,
-      publishDate,
-      description,
-      note,
+      title: title.trim(),
+      author: author.trim(),
+      coverUrl: coverUrl.trim(),
+      totalPages: Number(totalPages), // Ensure numeric value
+      publishDate: publishDate.trim(),
+      description: description.trim(),
+      note: note.trim(),
       status,
       openLibraryKey,
+      pagesRead: 0
     });
     onSaved();
   };
@@ -93,11 +125,7 @@ export default function CustomizeModal({ searchResult, apiSource, onClose, onSav
         {/* Header */}
         <div className="flex items-center justify-between p-6 pb-4 border-b" style={{ borderColor: 'var(--color-surface-dim)' }}>
           <h2 className="text-xl font-semibold" style={{ color: 'var(--color-on-surface)' }}>Preview & Customize</h2>
-          <button onClick={onClose} className="p-2 rounded-full transition-colors"
-            style={{ color: 'var(--color-on-surface-variant)' }}
-            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-variant)'}
-            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
-          >
+          <button onClick={onClose} className="p-2 rounded-full transition-colors" style={{ color: 'var(--color-on-surface-variant)' }}>
             <X size={20} />
           </button>
         </div>
@@ -109,134 +137,95 @@ export default function CustomizeModal({ searchResult, apiSource, onClose, onSav
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto p-6 space-y-5">
-            {/* Cover + Cover URL input */}
+            {/* Cover Selection Section */}
             <div className="flex gap-4 items-start">
-              <div className="w-24 h-36 rounded-[5px] overflow-hidden shrink-0 flex items-center justify-center shadow-md"
-  style={{ backgroundColor: 'var(--color-surface-variant)' }}
->
-  {coverUrl.length > 5 ? (
-    <img 
-      src={coverUrl} 
-      alt={title} 
-      className="w-full h-full object-cover" 
-      onError={(e) => e.currentTarget.style.display = 'none'} 
-    />
-  ) : (
-    <BookOpen size={28} style={{ color: 'var(--color-primary)' }} />
-  )}
-</div>
-              <div className="flex-1 space-y-2">
-                <label className="block text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-on-surface-variant)' }}>Cover Image URL</label>
+              <div className="w-24 h-36 rounded-xl overflow-hidden shrink-0 flex items-center justify-center shadow-md border"
+                style={{ backgroundColor: 'var(--color-surface-variant)', borderColor: 'var(--color-surface-dim)' }}>
+                {uploading ? (
+                  <Loader2 className="animate-spin" style={{ color: 'var(--color-primary)' }} />
+                ) : coverUrl.length > 5 ? (
+                  <img src={coverUrl} alt={title} className="w-full h-full object-cover" />
+                ) : (
+                  <BookOpen size={28} style={{ color: 'var(--color-primary)', opacity: 0.3 }} />
+                )}
+              </div>
+              <div className="flex-1 space-y-3">
+                <label className="block text-xs font-bold uppercase tracking-wider opacity-60">Cover Image</label>
+                
+                {/* Local Upload Button */}
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="w-full py-2.5 rounded-xl border-2 border-dashed flex items-center justify-center gap-2 text-sm transition-colors"
+                  style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}
+                >
+                  <UploadCloud size={16} />
+                  {uploading ? 'Uploading...' : 'Upload Local Cover'}
+                </button>
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleFileUpload} />
+
+                {/* URL Input as alternative */}
                 <div className="flex gap-2">
                   <input
                     type="text"
                     value={coverUrl}
                     onChange={e => setCoverUrl(e.target.value)}
-                    placeholder="Paste image URL..."
-                    className="flex-1 rounded-2xl px-4 py-2.5 text-sm outline-none focus:ring-2"
-                    style={{ ...inputStyle, '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties}
+                    placeholder="Or paste URL..."
+                    className="flex-1 rounded-xl px-3 py-2 text-xs outline-none"
+                    style={inputStyle}
                   />
-                  <button className="p-2.5 rounded-2xl transition-colors"
-                    style={{ backgroundColor: 'var(--color-surface)' }}
-                    title="Paste URL"
-                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-surface-variant)'}
-                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'var(--color-surface)'}
-                  >
-                    <ImagePlus size={16} style={{ color: 'var(--color-primary)' }} />
-                  </button>
                 </div>
               </div>
             </div>
 
-            {/* Title */}
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-on-surface-variant)' }}>Title</label>
-              <input
-                type="text"
-                value={title}
-                onChange={e => setTitle(e.target.value)}
-                className="w-full rounded-2xl px-4 py-3 outline-none focus:ring-2"
-                style={{ ...inputStyle, '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties}
-              />
+            {/* Title & Author */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-60">Title</label>
+                <input type="text" value={title} onChange={e => setTitle(e.target.value)} className="w-full rounded-2xl px-4 py-3 outline-none" style={inputStyle} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-60">Author</label>
+                <input type="text" value={author} onChange={e => setAuthor(e.target.value)} className="w-full rounded-2xl px-4 py-3 outline-none" style={inputStyle} />
+              </div>
             </div>
 
-            {/* Author */}
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-on-surface-variant)' }}>Author</label>
-              <input
-                type="text"
-                value={author}
-                onChange={e => setAuthor(e.target.value)}
-                className="w-full rounded-2xl px-4 py-3 outline-none focus:ring-2"
-                style={{ ...inputStyle, '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties}
-              />
-            </div>
-
-            {/* Pages + Date */}
+            {/* Pages & Date */}
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-on-surface-variant)' }}>Pages</label>
-                <input
-                  type="number"
-                  value={totalPages || ''}
-                  onChange={e => setTotalPages(parseInt(e.target.value) || 0)}
-                  placeholder="0"
-                  className="w-full rounded-2xl px-4 py-3 outline-none focus:ring-2"
-                  style={{ ...inputStyle, '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties}
-                />
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-60">Pages</label>
+                <input type="number" value={totalPages || ''} onChange={e => setTotalPages(parseInt(e.target.value) || 0)} className="w-full rounded-2xl px-4 py-3 outline-none" style={inputStyle} />
               </div>
               <div>
-                <label className="block text-xs font-medium uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-on-surface-variant)' }}>Publish Date</label>
-                <input
-                  type="text"
-                  value={publishDate}
-                  onChange={e => setPublishDate(e.target.value)}
-                  placeholder="e.g. 2020"
-                  className="w-full rounded-2xl px-4 py-3 outline-none focus:ring-2"
-                  style={{ ...inputStyle, '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties}
-                />
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-60">Year</label>
+                <input type="text" value={publishDate} onChange={e => setPublishDate(e.target.value)} className="w-full rounded-2xl px-4 py-3 outline-none" style={inputStyle} />
               </div>
             </div>
 
-            {/* Description */}
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-on-surface-variant)' }}>Description</label>
-              <textarea
-                value={description}
-                onChange={e => setDescription(e.target.value)}
-                rows={4}
-                placeholder="Book description..."
-                className="w-full rounded-2xl px-4 py-3 outline-none focus:ring-2 resize-none"
-                style={{ ...inputStyle, '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties}
-              />
+            {/* Description & Notes */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-60">Description</label>
+                <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full rounded-2xl px-4 py-3 text-sm outline-none resize-none" style={inputStyle} />
+              </div>
+              <div>
+                <label className="block text-xs font-bold uppercase tracking-wider mb-1.5 opacity-60">Personal Note</label>
+                <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} className="w-full rounded-2xl px-4 py-3 text-sm outline-none resize-none" style={inputStyle} />
+              </div>
             </div>
 
-            {/* Note */}
+            {/* Status Pills */}
             <div>
-              <label className="block text-xs font-medium uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-on-surface-variant)' }}>Personal Note</label>
-              <textarea
-                value={note}
-                onChange={e => setNote(e.target.value)}
-                rows={2}
-                placeholder="Add a personal note..."
-                className="w-full rounded-2xl px-4 py-3 outline-none focus:ring-2 resize-none"
-                style={{ ...inputStyle, '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties}
-              />
-            </div>
-
-            {/* Status */}
-            <div>
-              <label className="block text-xs font-medium uppercase tracking-wider mb-2" style={{ color: 'var(--color-on-surface-variant)' }}>Add to</label>
+              <label className="block text-xs font-bold uppercase tracking-wider mb-2 opacity-60">Add to</label>
               <div className="flex flex-wrap gap-2">
                 {statusOptions.map(opt => (
                   <button
                     key={opt.id}
                     onClick={() => setStatus(opt.id)}
-                    className="px-4 py-2 rounded-full text-sm font-medium transition-all"
+                    className="px-4 py-2 rounded-full text-xs font-bold transition-all"
                     style={{
                       backgroundColor: status === opt.id ? 'var(--color-primary)' : 'var(--color-surface)',
                       color: status === opt.id ? 'var(--color-on-primary)' : 'var(--color-on-surface-variant)',
-                      boxShadow: status === opt.id ? 'var(--shadow-card)' : 'none',
                     }}
                   >
                     {opt.label}
@@ -252,16 +241,12 @@ export default function CustomizeModal({ searchResult, apiSource, onClose, onSav
           <div className="p-6 pt-4 border-t" style={{ borderColor: 'var(--color-surface-dim)' }}>
             <button
               onClick={handleSave}
-              disabled={!title.trim()}
-              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-full font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              style={{
-                backgroundColor: 'var(--color-primary)',
-                color: 'var(--color-on-primary)',
-                boxShadow: 'var(--shadow-fab)',
-              }}
+              disabled={!title.trim() || uploading}
+              className="w-full flex items-center justify-center gap-2 py-3.5 rounded-full font-bold shadow-lg transition-transform active:scale-95 disabled:opacity-50"
+              style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-on-primary)' }}
             >
               <Save size={18} />
-              Save to Library
+              {uploading ? 'Finalizing Upload...' : 'Add to Library'}
             </button>
           </div>
         )}

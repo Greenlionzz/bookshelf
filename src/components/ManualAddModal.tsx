@@ -7,7 +7,7 @@ import { X, BookOpen, Save, ImagePlus, Loader2, BookPlus, UploadCloud } from 'lu
 interface Props {
   onClose: () => void;
   onSaved: () => void;
-  initialBook?: Book; // 👈 If this is passed, we are in "Edit Mode"
+  initialBook?: Book; 
 }
 
 const statusOptions: { id: ReadingStatus; label: string }[] = [
@@ -21,7 +21,7 @@ export default function ManualAddModal({ onClose, onSaved, initialBook }: Props)
   const { addBook, updateBook, activeTab } = useBooks();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Form States - Prefilled if initialBook exists
+  // Form States
   const [title, setTitle] = useState(initialBook?.title || '');
   const [author, setAuthor] = useState(initialBook?.author || '');
   const [coverUrl, setCoverUrl] = useState(initialBook?.coverUrl || '');
@@ -60,7 +60,7 @@ export default function ManualAddModal({ onClose, onSaved, initialBook }: Props)
       title: title.trim(),
       author: author.trim() || 'Unknown Author',
       coverUrl: coverUrl.trim(),
-      totalPages: Number(totalPages), // 👈 Force this to be a number
+      totalPages: Number(totalPages),
       publishDate: publishDate.trim(),
       description: description.trim(),
       note: note.trim(),
@@ -68,10 +68,8 @@ export default function ManualAddModal({ onClose, onSaved, initialBook }: Props)
     };
 
     if (initialBook) {
-      // 📝 EDIT MODE
       updateBook(initialBook.id, bookData);
     } else {
-      // ➕ ADD MODE
       addBook({ ...bookData, pagesRead: 0 });
     }
     onSaved();
@@ -105,7 +103,8 @@ export default function ManualAddModal({ onClose, onSaved, initialBook }: Props)
 
             <div className="flex-1 space-y-3">
               <label className="text-xs font-bold uppercase opacity-60">Cover Image</label>
-              <button onClick={() => fileInputRef.current?.click()} className="w-full py-2.5 rounded-xl border-2 border-dashed text-sm" style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
+              <button onClick={() => fileInputRef.current?.click()} className="w-full py-2.5 rounded-xl border-2 border-dashed text-sm flex items-center justify-center gap-2" style={{ borderColor: 'var(--color-primary)', color: 'var(--color-primary)' }}>
+                <UploadCloud size={16} />
                 {uploading ? 'Uploading...' : 'Upload Local Image'}
               </button>
               <input type="file" ref={fileInputRef} onChange={handleFileUpload} accept="image/*" className="hidden" />
@@ -132,13 +131,23 @@ export default function ManualAddModal({ onClose, onSaved, initialBook }: Props)
                 <input value={publishDate} onChange={e => setPublishDate(e.target.value)} className="w-full p-4 rounded-2xl outline-none" style={inputStyle} />
               </div>
             </div>
+            {/* Added Description Field */}
+            <div>
+              <label className="text-xs font-bold uppercase mb-1 block opacity-60">Description</label>
+              <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="w-full p-4 rounded-2xl outline-none resize-none" style={inputStyle} />
+            </div>
+            {/* Added Note Field */}
+            <div>
+              <label className="text-xs font-bold uppercase mb-1 block opacity-60">Personal Note</label>
+              <textarea value={note} onChange={e => setNote(e.target.value)} rows={2} className="w-full p-4 rounded-2xl outline-none resize-none" style={inputStyle} />
+            </div>
           </div>
 
           <div>
              <label className="text-xs font-bold uppercase mb-2 block opacity-60">Status</label>
              <div className="flex flex-wrap gap-2">
                {statusOptions.map(opt => (
-                 <button key={opt.id} onClick={() => setStatus(opt.id)} className="px-4 py-2 rounded-full text-xs font-bold"
+                 <button key={opt.id} onClick={() => setStatus(opt.id)} className="px-4 py-2 rounded-full text-xs font-bold transition-all"
                    style={{ backgroundColor: status === opt.id ? 'var(--color-primary)' : 'var(--color-surface)', color: status === opt.id ? 'var(--color-on-primary)' : 'var(--color-on-surface-variant)' }}>
                    {opt.label}
                  </button>
@@ -148,9 +157,9 @@ export default function ManualAddModal({ onClose, onSaved, initialBook }: Props)
         </div>
 
         <div className="p-6 border-t" style={{ borderColor: 'var(--color-surface-dim)' }}>
-          <button onClick={handleSave} disabled={!title.trim() || uploading} className="w-full p-4 rounded-full font-bold shadow-lg"
+          <button onClick={handleSave} disabled={!title.trim() || uploading} className="w-full p-4 rounded-full font-bold shadow-lg transition-transform active:scale-95"
             style={{ backgroundColor: 'var(--color-primary)', color: 'var(--color-on-primary)' }}>
-            {initialBook ? 'Update Book' : 'Save to Library'}
+            {initialBook ? 'Update Changes' : 'Save to Library'}
           </button>
         </div>
       </div>
