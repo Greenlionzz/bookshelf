@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/services/supabase';
 import { Book, ReadingStatus } from '@/types/book';
 import { useBooks } from '@/context/BookContext';
 import { X, BookOpen, Save, ImagePlus, Loader2, BookPlus, UploadCloud } from 'lucide-react';
