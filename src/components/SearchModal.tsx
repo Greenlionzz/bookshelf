@@ -1,11 +1,15 @@
 import { useState, useRef, useEffect } from 'react';
 import { OpenLibraryService } from '@/services/openlibrary';
+import { GoogleBooksService } from '@/services/googlebooks'; // 👈 Added Google Service
 import { SearchResult } from '@/types/book';
 import { Search, X, Loader2, BookOpen } from 'lucide-react';
 
+export type ApiSource = 'google' | 'openlibrary';
+
 interface Props {
   onClose: () => void;
-  onSelectResult: (result: SearchResult) => void;
+  // 👈 We now pass the source so the parent knows who to ask for the details
+  onSelectResult: (result: SearchResult, source: ApiSource) => void; 
 }
 
 export default function SearchModal({ onClose, onSelectResult }: Props) {
@@ -13,6 +17,10 @@ export default function SearchModal({ onClose, onSelectResult }: Props) {
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  
+  // 👈 State for our new API toggle
+  const [apiSource, setApiSource] = useState<ApiSource>('google'); 
+
   const inputRef = useRef<HTMLInputElement>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -20,6 +28,7 @@ export default function SearchModal({ onClose, onSelectResult }: Props) {
     inputRef.current?.focus();
   }, []);
 
+  // Re-run search if they type OR if they flip the toggle switch!
   useEffect(() => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     if (!query.trim()) {
@@ -27,11 +36,16 @@ export default function SearchModal({ onClose, onSelectResult }: Props) {
       setSearched(false);
       return;
     }
+
     timeoutRef.current = setTimeout(async () => {
       setLoading(true);
       setSearched(true);
       try {
-        const data = await OpenLibraryService.search(query);
+        // 👈 Route the search based on the toggle!
+        const data = apiSource === 'google' 
+          ? await GoogleBooksService.search(query)
+          : await OpenLibraryService.search(query);
+          
         setResults(data);
       } catch {
         setResults([]);
@@ -40,7 +54,7 @@ export default function SearchModal({ onClose, onSelectResult }: Props) {
     }, 500);
 
     return () => { if (timeoutRef.current) clearTimeout(timeoutRef.current); };
-  }, [query]);
+  }, [query, apiSource]); // Added apiSource to dependency array
 
   return (
     <div className="fixed inset-0 z-50 flex items-start justify-center pt-8 sm:pt-16 p-4" onClick={onClose}>
@@ -50,8 +64,8 @@ export default function SearchModal({ onClose, onSelectResult }: Props) {
         style={{ backgroundColor: 'var(--color-bg)' }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Search bar */}
-        <div className="p-4 border-b" style={{ borderColor: 'var(--color-surface-dim)' }}>
+        {/* Search bar & Toggle Header */}
+        <div className="p-4 border-b flex flex-col gap-3" style={{ borderColor: 'var(--color-surface-dim)' }}>
           <div className="flex items-center gap-3 rounded-full px-5 py-3" style={{ backgroundColor: 'var(--color-surface)' }}>
             <Search size={20} className="shrink-0" style={{ color: 'var(--color-on-surface-variant)' }} />
             <input
@@ -73,6 +87,30 @@ export default function SearchModal({ onClose, onSelectResult }: Props) {
               </button>
             )}
           </div>
+
+          {/* 👈 The New Toggle Switch */}
+          <div className="flex justify-center gap-2 px-2">
+            <button
+              onClick={() => setApiSource('google')}
+              className="px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: apiSource === 'google' ? 'var(--color-primary)' : 'transparent',
+                color: apiSource === 'google' ? 'var(--color-on-primary)' : 'var(--color-on-surface-variant)',
+              }}
+            >
+              Google Books
+            </button>
+            <button
+              onClick={() => setApiSource('openlibrary')}
+              className="px-4 py-1.5 rounded-full text-sm font-medium transition-colors"
+              style={{
+                backgroundColor: apiSource === 'openlibrary' ? 'var(--color-primary)' : 'transparent',
+                color: apiSource === 'openlibrary' ? 'var(--color-on-primary)' : 'var(--color-on-surface-variant)',
+              }}
+            >
+              OpenLibrary
+            </button>
+          </div>
         </div>
 
         {/* Results */}
@@ -82,21 +120,20 @@ export default function SearchModal({ onClose, onSelectResult }: Props) {
               <Loader2 size={32} className="animate-spin" style={{ color: 'var(--color-primary)' }} />
             </div>
           )}
-
           {!loading && searched && results.length === 0 && (
             <div className="flex flex-col items-center py-12 text-center">
               <BookOpen size={40} style={{ color: 'var(--color-primary)', opacity: 0.3 }} className="mb-3" />
               <p style={{ color: 'var(--color-on-surface-variant)' }}>No books found for "{query}"</p>
-              <p className="text-sm mt-1" style={{ color: 'var(--color-outline)' }}>Try a different search term</p>
+              <p className="text-sm mt-1" style={{ color: 'var(--color-outline)' }}>Try a different search term or switch databases</p>
             </div>
           )}
-
           {!loading && results.length > 0 && (
             <div className="space-y-2">
               {results.map((result, idx) => (
                 <button
                   key={`${result.key}-${idx}`}
-                  onClick={() => onSelectResult(result)}
+                  // 👈 We pass the apiSource back up to the parent!
+                  onClick={() => onSelectResult(result, apiSource)} 
                   className="w-full flex items-center gap-4 p-3 rounded-2xl transition-colors text-left"
                   onMouseEnter={e => e.currentTarget.style.backgroundColor = 'var(--color-surface)'}
                   onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
@@ -121,7 +158,6 @@ export default function SearchModal({ onClose, onSelectResult }: Props) {
               ))}
             </div>
           )}
-
           {!loading && !searched && (
             <div className="flex flex-col items-center py-12 text-center">
               <Search size={40} style={{ color: 'var(--color-primary)', opacity: 0.3 }} className="mb-3" />

@@ -13,11 +13,17 @@ function AppContent() {
   const [showSearch, setShowSearch] = useState(false);
   const [showManualAdd, setShowManualAdd] = useState(false);
   const [selectedSearchResult, setSelectedSearchResult] = useState<SearchResult | null>(null);
+  
+  // 👇 New state to remember which API was used!
+  const [selectedApiSource, setSelectedApiSource] = useState<'google' | 'openlibrary'>('google');
+  
   const [selectedBook, setSelectedBook] = useState<Book | null>(null);
 
-  const handleSearchSelect = (result: SearchResult) => {
+  // 👇 Updated to catch both the result AND the source from SearchModal
+  const handleSearchSelect = (result: SearchResult, source: 'google' | 'openlibrary') => {
     setShowSearch(false);
     setSelectedSearchResult(result);
+    setSelectedApiSource(source);
   };
 
   const handleCustomizeSaved = () => {
@@ -47,6 +53,7 @@ function AppContent() {
       {selectedSearchResult && (
         <CustomizeModal
           searchResult={selectedSearchResult}
+          apiSource={selectedApiSource} // 👈 Passing the chosen API down to the modal!
           onClose={() => setSelectedSearchResult(null)}
           onSaved={handleCustomizeSaved}
         />

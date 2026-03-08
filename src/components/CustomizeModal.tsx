@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { OpenLibraryService } from '@/services/openlibrary';
+import { GoogleBooksService } from '@/services/googlebooks'; // 👈 1. Added Google Books
 import { SearchResult, ReadingStatus } from '@/types/book';
 import { useBooks } from '@/context/BookContext';
 import { X, Loader2, BookOpen, Save, ImagePlus } from 'lucide-react';
 
 interface Props {
   searchResult: SearchResult;
+  apiSource: 'google' | 'openlibrary'; // 👈 2. Added the new prop
   onClose: () => void;
   onSaved: () => void;
 }
@@ -17,8 +19,9 @@ const statusOptions: { id: ReadingStatus; label: string }[] = [
   { id: 'paused', label: 'Paused' },
 ];
 
-export default function CustomizeModal({ searchResult, onClose, onSaved }: Props) {
+export default function CustomizeModal({ searchResult, apiSource, onClose, onSaved }: Props) {
   const { addBook, activeTab } = useBooks();
+  
   const [loading, setLoading] = useState(true);
   const [title, setTitle] = useState(searchResult.title);
   const [author, setAuthor] = useState(searchResult.author);
@@ -32,10 +35,15 @@ export default function CustomizeModal({ searchResult, onClose, onSaved }: Props
 
   useEffect(() => {
     let cancelled = false;
+
     async function fetchDetails() {
       setLoading(true);
       try {
-        const details = await OpenLibraryService.getWorkDetails(searchResult.key);
+        // 👈 3. The Traffic Cop: Route the request to the correct API!
+        const details = apiSource === 'google'
+          ? await GoogleBooksService.getWorkDetails(searchResult.key)
+          : await OpenLibraryService.getWorkDetails(searchResult.key);
+
         if (cancelled) return;
         setTitle(details.title);
         setAuthor(details.author);
@@ -45,13 +53,14 @@ export default function CustomizeModal({ searchResult, onClose, onSaved }: Props
         setDescription(details.description);
         setOpenLibraryKey(details.openLibraryKey);
       } catch {
-        // Keep the search result data
+        // Keep the search result data if the deep fetch fails
       }
       if (!cancelled) setLoading(false);
     }
+
     fetchDetails();
     return () => { cancelled = true; };
-  }, [searchResult.key]);
+  }, [searchResult.key, apiSource]); // Don't forget to add apiSource to the dependency array!
 
   const handleSave = () => {
     addBook({

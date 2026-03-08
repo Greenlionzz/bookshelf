@@ -35,7 +35,7 @@ export default function FAB({ onSearchClick, onManualClick }: Props) {
             : 'opacity-0 scale-90 translate-y-2 pointer-events-none'
         }`}
       >
-        {/* Search OpenLibrary option */}
+        {/* Search Database option */}
         <button
           onClick={() => {
             setOpen(false);
@@ -57,8 +57,9 @@ export default function FAB({ onSearchClick, onManualClick }: Props) {
             <Search size={18} style={{ color: 'var(--color-primary)' }} />
           </div>
           <div className="text-left">
-            <p className="text-sm font-semibold" style={{ color: 'var(--color-on-surface)' }}>Search OpenLibrary</p>
-            <p className="text-[11px]" style={{ color: 'var(--color-outline)' }}>Find and import book details</p>
+            {/* 👇 Updated text here */}
+            <p className="text-sm font-semibold" style={{ color: 'var(--color-on-surface)' }}>Search Database</p>
+            <p className="text-[11px]" style={{ color: 'var(--color-outline)' }}>Google Books or OpenLibrary</p>
           </div>
         </button>
 
