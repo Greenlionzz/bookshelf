@@ -17,6 +17,8 @@ const statusOptions: { id: ReadingStatus; label: string }[] = [
 
 export default function ManualAddModal({ onClose, onSaved }: Props) {
   const { addBook, activeTab } = useBooks();
+  
+  // Form States
   const [title, setTitle] = useState('');
   const [author, setAuthor] = useState('');
   const [coverUrl, setCoverUrl] = useState('');
@@ -26,8 +28,18 @@ export default function ManualAddModal({ onClose, onSaved }: Props) {
   const [note, setNote] = useState('');
   const [status, setStatus] = useState<ReadingStatus>(activeTab);
   
-  // 👈 We removed the 'error' state and replaced it with a 'isValidating' check
-  const [imgKey, setImgKey] = useState(0); 
+  // 🚀 Image Preview logic
+  const [previewUrl, setPreviewUrl] = useState('');
+  const [imgKey, setImgKey] = useState(0);
+
+  // Sync the preview with the input after a short delay
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setPreviewUrl(coverUrl.trim());
+      setImgKey(prev => prev + 1);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [coverUrl]);
 
   const handleSave = () => {
     if (!title.trim()) return;
@@ -49,9 +61,8 @@ export default function ManualAddModal({ onClose, onSaved }: Props) {
     try {
       const text = await navigator.clipboard.readText();
       setCoverUrl(text);
-      setImgKey(prev => prev + 1); // Force image refresh
     } catch (err) {
-      console.error("Failed to read clipboard");
+      console.error("Clipboard access denied");
     }
   };
 
@@ -68,6 +79,7 @@ export default function ManualAddModal({ onClose, onSaved }: Props) {
         style={{ backgroundColor: 'var(--color-bg)' }}
         onClick={e => e.stopPropagation()}
       >
+        {/* Header */}
         <div className="flex items-center justify-between p-6 pb-4 border-b" style={{ borderColor: 'var(--color-surface-dim)' }}>
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-2xl flex items-center justify-center" style={{ backgroundColor: 'var(--color-surface-variant)' }}>
@@ -80,28 +92,31 @@ export default function ManualAddModal({ onClose, onSaved }: Props) {
           </button>
         </div>
 
+        {/* Form Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
           <div className="flex gap-4 items-start">
-            <div className="w-24 h-36 rounded-[5px] overflow-hidden shrink-0 flex items-center justify-center shadow-md" style={{ backgroundColor: 'var(--color-surface-variant)' }}>
-              {/* 👈 Improved Logic: Only show icon if URL is tiny/empty */}
-              {coverUrl.length > 5 ? (
+            {/* 🖼️ The Force-Render Preview Box */}
+            <div className="w-24 h-36 rounded-[5px] overflow-hidden shrink-0 flex items-center justify-center shadow-md relative" 
+                 style={{ backgroundColor: 'var(--color-surface-variant)' }}>
+              
+              {/* Fallback Layer */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+                <BookOpen size={28} style={{ color: 'var(--color-primary)', opacity: 0.5 }} />
+                <span className="text-[10px] font-medium" style={{ color: 'var(--color-primary)', opacity: 0.5 }}>No Cover</span>
+              </div>
+
+              {/* Image Layer */}
+              {previewUrl.startsWith('http') && (
                 <img
                   key={imgKey}
-                  src={coverUrl}
-                  alt="Preview"
-                  className="w-full h-full object-cover"
-                  onError={(e) => {
-                    // If it fails, we just hide the broken image nicely
-                    e.currentTarget.style.display = 'none';
-                  }}
+                  src={previewUrl}
+                  alt=""
+                  className="absolute inset-0 w-full h-full object-cover z-10"
+                  onError={(e) => { e.currentTarget.style.display = 'none'; }}
                 />
-              ) : (
-                <div className="flex flex-col items-center gap-1">
-                  <BookOpen size={28} style={{ color: 'var(--color-primary)' }} />
-                  <span className="text-[10px] font-medium" style={{ color: 'var(--color-primary)' }}>No Cover</span>
-                </div>
               )}
             </div>
+
             <div className="flex-1 space-y-2">
               <label className="block text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-on-surface-variant)' }}>Cover Image URL</label>
               <div className="flex gap-2">
@@ -124,6 +139,7 @@ export default function ManualAddModal({ onClose, onSaved }: Props) {
             </div>
           </div>
 
+          {/* Rest of form fields... */}
           <div>
             <label className="block text-xs font-medium uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-on-surface-variant)' }}>Title *</label>
             <input
@@ -170,17 +186,6 @@ export default function ManualAddModal({ onClose, onSaved }: Props) {
           </div>
 
           <div>
-            <label className="block text-xs font-medium uppercase tracking-wider mb-1.5" style={{ color: 'var(--color-on-surface-variant)' }}>Description</label>
-            <textarea
-              value={description}
-              onChange={e => setDescription(e.target.value)}
-              rows={3}
-              className="w-full rounded-2xl px-4 py-3 outline-none focus:ring-2 resize-none"
-              style={{ ...inputStyle, '--tw-ring-color': 'var(--color-primary)' } as React.CSSProperties}
-            />
-          </div>
-
-          <div>
             <label className="block text-xs font-medium uppercase tracking-wider mb-2" style={{ color: 'var(--color-on-surface-variant)' }}>Add to</label>
             <div className="flex flex-wrap gap-2">
               {statusOptions.map(opt => (
@@ -200,6 +205,7 @@ export default function ManualAddModal({ onClose, onSaved }: Props) {
           </div>
         </div>
 
+        {/* Action Footer */}
         <div className="p-6 pt-4 border-t" style={{ borderColor: 'var(--color-surface-dim)' }}>
           <button
             onClick={handleSave}
