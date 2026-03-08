@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { supabase } from '@/lib/supabase'; // 👈 Ensure this path is correct for your project
+import { supabase } from '@/services/supabase'; // 👈 Ensure this path is correct for your project
 import { ReadingStatus } from '@/types/book';
 import { useBooks } from '@/context/BookContext';
 import { X, BookOpen, Save, ImagePlus, Loader2, BookPlus, UploadCloud } from 'lucide-react';
