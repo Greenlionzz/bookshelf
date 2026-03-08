@@ -161,19 +161,17 @@ export default function DetailView({ book: initialBook, onClose, onEdit }: Props
               <p className="mt-1" style={{ color: 'var(--color-on-surface-variant)' }}>{book.author}</p>
             </div>
 
-            {/* Reading Progress - Only for Currently Reading */}
+           {/* Reading Progress Section */}
 {book.status === 'currently-reading' && (
   book.totalPages > 0 ? (
     <div className="rounded-[20px] p-5" style={{ backgroundColor: tintedSurface }}>
       <div className="flex items-center justify-between mb-3">
-        <label className="text-xs font-medium uppercase tracking-wider"
-          style={{ color: 'var(--color-on-surface-variant)' }}
-        >Reading Progress</label>
+        <label className="text-xs font-medium uppercase opacity-60">Reading Progress</label>
         <span className="text-sm font-semibold" style={{ color: accentColor }}>{progressPercent}%</span>
       </div>
 
-      {/* Progress bar visual */}
-      <div className="w-full h-2 rounded-full mb-4 overflow-hidden" style={{ backgroundColor: tintedSurfaceStrong }}>
+      {/* Visual Progress Bar */}
+      <div className="w-full h-2 rounded-full mb-6 overflow-hidden" style={{ backgroundColor: tintedSurfaceStrong }}>
         <div
           className="h-full rounded-full transition-all duration-300"
           style={{ width: `${progressPercent}%`, backgroundColor: accentColor }}
@@ -181,96 +179,93 @@ export default function DetailView({ book: initialBook, onClose, onEdit }: Props
       </div>
 
       {progressInputMode === 'slider' ? (
-        /* 🛝 SLIDER MODE */
-        <div className="space-y-2">
+        /* 🛝 INTERACTIVE SLIDER */
+        <div className="space-y-4">
           <input
             type="range"
-            min={0}
+            min="0"
             max={book.totalPages}
-            value={book.pagesRead}
-            onChange={e => {
-              const val = parseInt(e.target.value, 10);
-              handlePagesChange(val); // This sends the update to Supabase
-              setManualPageInput(String(val));
+            value={book.pagesRead || 0}
+            onChange={(e) => {
+              const newVal = parseInt(e.target.value, 10);
+              // 👈 IMPORTANT: We update local state AND database immediately
+              setManualPageInput(String(newVal));
+              handlePagesChange(newVal); 
             }}
-            className="w-full h-2 rounded-full appearance-none cursor-pointer"
+            className="w-full h-2 rounded-full appearance-none cursor-pointer accent-primary"
             style={{
               background: `linear-gradient(to right, ${accentColor} ${progressPercent}%, ${tintedSurfaceStrong} ${progressPercent}%)`,
+              // This CSS ensures the slider thumb matches your theme color
+              WebkitAppearance: 'none',
             }}
           />
-          <div className="flex justify-between mt-1">
-            <span className="text-xs opacity-60">Page {book.pagesRead}</span>
-            <span className="text-xs opacity-60">of {book.totalPages}</span>
+          
+          <div className="flex justify-between items-end mt-2">
+            <div className="flex flex-col">
+              <span className="text-[10px] uppercase font-bold opacity-40">Current</span>
+              <span className="text-lg font-bold" style={{ color: 'var(--color-on-surface)' }}>
+                {book.pagesRead}
+              </span>
+            </div>
+            <div className="flex flex-col items-end">
+              <span className="text-[10px] uppercase font-bold opacity-40">Total</span>
+              <span className="text-lg font-bold" style={{ color: 'var(--color-on-surface)' }}>
+                {book.totalPages}
+              </span>
+            </div>
           </div>
         </div>
       ) : (
-        /* ⌨️ MANUAL INPUT MODE */
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => handlePagesChange(Math.max(0, book.pagesRead - 1))}
-              className="w-10 h-10 rounded-xl flex items-center justify-center bg-black/5 active:scale-95"
-            >
-              <Minus size={18} />
-            </button>
-            
-            <div className="flex-1 relative">
-              <input
-                type="number"
-                value={isManualInputFocused ? manualPageInput : book.pagesRead}
-                onFocus={() => setIsManualInputFocused(true)}
-                onChange={(e) => setManualPageInput(e.target.value)}
-                onBlur={() => {
-                  setIsManualInputFocused(false);
-                  const parsed = parseInt(manualPageInput, 10) || 0;
-                  handlePagesChange(Math.min(parsed, book.totalPages));
-                }}
-                className="w-full text-center text-2xl font-bold bg-transparent outline-none"
-              />
-              <div className="text-center text-[10px] opacity-40 uppercase font-bold">Current Page</div>
-            </div>
-
-            <button
-              onClick={() => handlePagesChange(Math.min(book.totalPages, book.pagesRead + 1))}
-              className="w-10 h-10 rounded-xl flex items-center justify-center bg-black/5 active:scale-95"
-            >
-              <Plus size={18} />
-            </button>
+        /* ⌨️ MANUAL STEPPER MODE */
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => handlePagesChange(Math.max(0, book.pagesRead - 1))}
+            className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90"
+            style={{ backgroundColor: tintedSurfaceStrong }}
+          >
+            <Minus size={20} />
+          </button>
+          
+          <div className="flex-1 text-center">
+            <input
+              type="number"
+              value={isManualInputFocused ? manualPageInput : book.pagesRead}
+              onFocus={() => setIsManualInputFocused(true)}
+              onChange={(e) => setManualPageInput(e.target.value)}
+              onBlur={() => {
+                setIsManualInputFocused(false);
+                const val = Math.min(Math.max(0, parseInt(manualPageInput, 10) || 0), book.totalPages);
+                handlePagesChange(val);
+              }}
+              className="w-full bg-transparent text-3xl font-black text-center outline-none"
+              style={{ color: 'var(--color-on-surface)' }}
+            />
+            <p className="text-[10px] uppercase font-bold opacity-30 mt-1">Page Number</p>
           </div>
 
-          {/* Quick Jump Buttons */}
-          <div className="flex gap-1.5">
-            {[0, 0.25, 0.5, 0.75, 1].map((perc) => {
-              const targetPage = Math.round(book.totalPages * perc);
-              const labels = ['0%', '25%', '50%', '75%', '100%'];
-              return (
-                <button
-                  key={perc}
-                  onClick={() => handlePagesChange(targetPage)}
-                  className="flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors"
-                  style={{ 
-                    backgroundColor: book.pagesRead === targetPage ? accentColor : tintedSurfaceStrong,
-                    color: book.pagesRead === targetPage ? 'white' : 'inherit'
-                  }}
-                >
-                  {perc === 1 ? 'DONE' : labels[['0', '0.25', '0.5', '0.75', '1'].indexOf(String(perc))]}
-                </button>
-              );
-            })}
-          </div>
+          <button
+            onClick={() => handlePagesChange(Math.min(book.totalPages, book.pagesRead + 1))}
+            className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all active:scale-90"
+            style={{ backgroundColor: tintedSurfaceStrong }}
+          >
+            <Plus size={20} />
+          </button>
         </div>
       )}
     </div>
   ) : (
-    /* ⚠️ Fallback if totalPages is 0 */
-    <button 
-      onClick={() => onEdit(book)}
-      className="w-full p-6 rounded-[20px] border-2 border-dashed flex flex-col items-center gap-2"
-      style={{ borderColor: tintedSurfaceStrong, color: accentColor }}
-    >
-      <Settings2 size={24} />
-      <span className="font-medium text-sm">Add total pages to track progress</span>
-    </button>
+    /* ⚠️ IF TOTAL PAGES IS 0 */
+    <div className="p-6 rounded-[24px] border-2 border-dashed flex flex-col items-center gap-3 text-center"
+         style={{ borderColor: tintedSurfaceStrong }}>
+      <p className="text-sm opacity-60">Total pages not set. Slider disabled.</p>
+      <button 
+        onClick={() => onEdit(book)}
+        className="px-6 py-2 rounded-full font-bold text-xs"
+        style={{ backgroundColor: accentColor, color: 'white' }}
+      >
+        Set Pages Now
+      </button>
+    </div>
   )
 )}
 
