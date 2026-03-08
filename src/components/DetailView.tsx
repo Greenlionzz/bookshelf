@@ -17,6 +17,8 @@ const statusOptions: { id: ReadingStatus; label: string; activeColor: string }[]
   { id: 'paused', label: 'Paused', activeColor: 'var(--color-muted)' },
 ];
 
+const [corsError, setCorsError] = useState(false);
+
 export default function DetailView({ book: initialBook, onClose, onEdit }: Props) {
   const { updateBook, deleteBook, books, progressInputMode, darkMode } = useBooks();
   const [visible, setVisible] = useState(false);
@@ -157,18 +159,32 @@ export default function DetailView({ book: initialBook, onClose, onEdit }: Props
               </>
             )}
             <div className="relative z-10">
-              <div className="w-44 h-64 rounded-[5px] overflow-hidden flex items-center justify-center transition-shadow duration-700" style={{ backgroundColor: 'var(--color-surface-variant)', boxShadow: colorsLoading ? 'none' : coverGlow }}>
-                {book.coverUrl ? (
-                  <img 
-                    src={book.coverUrl} 
-                    alt={book.title} 
-                    className="w-full h-full object-cover" 
-                    crossOrigin="anonymous" // 👈 REQUIRED FOR MOOD LIGHTING
-                  />
-                ) : (
-                  <BookOpen size={40} style={{ color: 'var(--color-primary)' }} />
-                )}
-              </div>
+              // 1. Add this small piece of state at the top with your other states
+const [corsError, setCorsError] = useState(false);
+
+<div className="w-44 h-64 rounded-[5px] overflow-hidden flex items-center justify-center transition-shadow duration-700" 
+     style={{ backgroundColor: 'var(--color-surface-variant)', boxShadow: colorsLoading ? 'none' : coverGlow }}>
+  {book.coverUrl ? (
+    <img 
+      key={corsError ? 'no-cors' : 'with-cors'} // 👈 Forces a re-render if it fails
+      src={book.coverUrl} 
+      alt={book.title} 
+      className="w-full h-full object-cover" 
+      // Only attempt anonymous check if we haven't hit an error yet
+      crossOrigin={corsError ? undefined : "anonymous"} 
+      onError={(e) => {
+        if (!corsError) {
+          console.warn("CORS block detected, falling back to standard loading.");
+          setCorsError(true); // 👈 Re-tries without the color check
+        } else {
+          e.currentTarget.style.display = 'none'; // Truly broken link
+        }
+      }}
+    />
+  ) : (
+    <BookOpen size={40} style={{ color: 'var(--color-primary)' }} />
+  )}
+</div>
             </div>
           </div>
 
