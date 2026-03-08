@@ -161,42 +161,118 @@ export default function DetailView({ book: initialBook, onClose, onEdit }: Props
               <p className="mt-1" style={{ color: 'var(--color-on-surface-variant)' }}>{book.author}</p>
             </div>
 
-            {/* Reading Progress Logic */}
-            {book.status === 'currently-reading' && (
-              book.totalPages > 0 ? (
-                <div className="rounded-[20px] p-5" style={{ backgroundColor: tintedSurface }}>
-                  <div className="flex items-center justify-between mb-3">
-                    <label className="text-xs font-medium uppercase">Progress</label>
-                    <span className="text-sm font-semibold" style={{ color: accentColor }}>{progressPercent}%</span>
-                  </div>
-                  <div className="w-full h-2 rounded-full mb-4 bg-black/10 overflow-hidden">
-                    <div className="h-full transition-all" style={{ width: `${progressPercent}%`, backgroundColor: accentColor }} />
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={book.totalPages}
-                    value={book.pagesRead}
-                    onChange={e => handlePagesChange(parseInt(e.target.value))}
-                    className="w-full accent-primary"
-                  />
-                  <div className="flex justify-between mt-2 text-xs opacity-60">
-                    <span>Page {book.pagesRead}</span>
-                    <span>of {book.totalPages}</span>
-                  </div>
-                </div>
-              ) : (
-                /* Fallback for books with 0 pages */
-                <button 
-                  onClick={() => onEdit(book)}
-                  className="w-full p-6 rounded-[20px] border-2 border-dashed flex flex-col items-center gap-2"
-                  style={{ borderColor: tintedSurfaceStrong, color: accentColor }}
+            {/* Reading Progress - Only for Currently Reading */}
+{book.status === 'currently-reading' && (
+  book.totalPages > 0 ? (
+    <div className="rounded-[20px] p-5" style={{ backgroundColor: tintedSurface }}>
+      <div className="flex items-center justify-between mb-3">
+        <label className="text-xs font-medium uppercase tracking-wider"
+          style={{ color: 'var(--color-on-surface-variant)' }}
+        >Reading Progress</label>
+        <span className="text-sm font-semibold" style={{ color: accentColor }}>{progressPercent}%</span>
+      </div>
+
+      {/* Progress bar visual */}
+      <div className="w-full h-2 rounded-full mb-4 overflow-hidden" style={{ backgroundColor: tintedSurfaceStrong }}>
+        <div
+          className="h-full rounded-full transition-all duration-300"
+          style={{ width: `${progressPercent}%`, backgroundColor: accentColor }}
+        />
+      </div>
+
+      {progressInputMode === 'slider' ? (
+        /* 🛝 SLIDER MODE */
+        <div className="space-y-2">
+          <input
+            type="range"
+            min={0}
+            max={book.totalPages}
+            value={book.pagesRead}
+            onChange={e => {
+              const val = parseInt(e.target.value, 10);
+              handlePagesChange(val); // This sends the update to Supabase
+              setManualPageInput(String(val));
+            }}
+            className="w-full h-2 rounded-full appearance-none cursor-pointer"
+            style={{
+              background: `linear-gradient(to right, ${accentColor} ${progressPercent}%, ${tintedSurfaceStrong} ${progressPercent}%)`,
+            }}
+          />
+          <div className="flex justify-between mt-1">
+            <span className="text-xs opacity-60">Page {book.pagesRead}</span>
+            <span className="text-xs opacity-60">of {book.totalPages}</span>
+          </div>
+        </div>
+      ) : (
+        /* ⌨️ MANUAL INPUT MODE */
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => handlePagesChange(Math.max(0, book.pagesRead - 1))}
+              className="w-10 h-10 rounded-xl flex items-center justify-center bg-black/5 active:scale-95"
+            >
+              <Minus size={18} />
+            </button>
+            
+            <div className="flex-1 relative">
+              <input
+                type="number"
+                value={isManualInputFocused ? manualPageInput : book.pagesRead}
+                onFocus={() => setIsManualInputFocused(true)}
+                onChange={(e) => setManualPageInput(e.target.value)}
+                onBlur={() => {
+                  setIsManualInputFocused(false);
+                  const parsed = parseInt(manualPageInput, 10) || 0;
+                  handlePagesChange(Math.min(parsed, book.totalPages));
+                }}
+                className="w-full text-center text-2xl font-bold bg-transparent outline-none"
+              />
+              <div className="text-center text-[10px] opacity-40 uppercase font-bold">Current Page</div>
+            </div>
+
+            <button
+              onClick={() => handlePagesChange(Math.min(book.totalPages, book.pagesRead + 1))}
+              className="w-10 h-10 rounded-xl flex items-center justify-center bg-black/5 active:scale-95"
+            >
+              <Plus size={18} />
+            </button>
+          </div>
+
+          {/* Quick Jump Buttons */}
+          <div className="flex gap-1.5">
+            {[0, 0.25, 0.5, 0.75, 1].map((perc) => {
+              const targetPage = Math.round(book.totalPages * perc);
+              const labels = ['0%', '25%', '50%', '75%', '100%'];
+              return (
+                <button
+                  key={perc}
+                  onClick={() => handlePagesChange(targetPage)}
+                  className="flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-colors"
+                  style={{ 
+                    backgroundColor: book.pagesRead === targetPage ? accentColor : tintedSurfaceStrong,
+                    color: book.pagesRead === targetPage ? 'white' : 'inherit'
+                  }}
                 >
-                  <Settings2 size={24} />
-                  <span className="font-medium">Add total pages to track progress</span>
+                  {perc === 1 ? 'DONE' : labels[['0', '0.25', '0.5', '0.75', '1'].indexOf(String(perc))]}
                 </button>
-              )
-            )}
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </div>
+  ) : (
+    /* ⚠️ Fallback if totalPages is 0 */
+    <button 
+      onClick={() => onEdit(book)}
+      className="w-full p-6 rounded-[20px] border-2 border-dashed flex flex-col items-center gap-2"
+      style={{ borderColor: tintedSurfaceStrong, color: accentColor }}
+    >
+      <Settings2 size={24} />
+      <span className="font-medium text-sm">Add total pages to track progress</span>
+    </button>
+  )
+)}
 
             {/* Description & Notes */}
             {book.description && (
