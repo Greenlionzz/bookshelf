@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
+import { supabase } from '@/services/supabase';
 import { OpenLibraryService } from '@/services/openlibrary';
 import { GoogleBooksService } from '@/services/googlebooks';
 import { SearchResult, ReadingStatus } from '@/types/book';
