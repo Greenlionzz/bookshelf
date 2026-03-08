@@ -112,14 +112,19 @@ export default function CustomizeModal({ searchResult, apiSource, onClose, onSav
             {/* Cover + Cover URL input */}
             <div className="flex gap-4 items-start">
               <div className="w-24 h-36 rounded-[5px] overflow-hidden shrink-0 flex items-center justify-center shadow-md"
-                style={{ backgroundColor: 'var(--color-surface-variant)' }}
-              >
-                {coverUrl ? (
-                  <img src={coverUrl} alt={title} className="w-full h-full object-cover" />
-                ) : (
-                  <BookOpen size={28} style={{ color: 'var(--color-primary)' }} />
-                )}
-              </div>
+  style={{ backgroundColor: 'var(--color-surface-variant)' }}
+>
+  {coverUrl.length > 5 ? (
+    <img 
+      src={coverUrl} 
+      alt={title} 
+      className="w-full h-full object-cover" 
+      onError={(e) => e.currentTarget.style.display = 'none'} 
+    />
+  ) : (
+    <BookOpen size={28} style={{ color: 'var(--color-primary)' }} />
+  )}
+</div>
               <div className="flex-1 space-y-2">
                 <label className="block text-xs font-medium uppercase tracking-wider" style={{ color: 'var(--color-on-surface-variant)' }}>Cover Image URL</label>
                 <div className="flex gap-2">
