@@ -57,17 +57,20 @@ export default function DetailView({ book: initialBook, onClose, onEdit }: Props
   };
 
   const handleStatusChange = (status: ReadingStatus) => {
-    updateBook(book.id, { ...book, status });
-  };
+  // Pass ONLY the updated book object to match your Context
+  updateBook({ ...book, status });
+};
 
   const handlePagesChange = (val: number) => {
-    updateBook(book.id, { ...book, pagesRead: val });
-  };
+  // Pass ONLY the updated book object to match your Context
+  updateBook({ ...book, pagesRead: val });
+};
 
   const handleSaveNote = () => {
-    updateBook(book.id, { ...book, note: noteText });
-    setEditingNote(false);
-  };
+  // Pass ONLY the updated book object to match your Context
+  updateBook({ ...book, note: noteText });
+  setEditingNote(false);
+};
 
   const handleDelete = () => {
     deleteBook(book.id);
@@ -182,23 +185,22 @@ export default function DetailView({ book: initialBook, onClose, onEdit }: Props
         /* 🛝 INTERACTIVE SLIDER */
         <div className="space-y-4">
           <input
-            type="range"
-            min="0"
-            max={book.totalPages}
-            value={book.pagesRead || 0}
-            onChange={(e) => {
-              const newVal = parseInt(e.target.value, 10);
-              // 👈 IMPORTANT: We update local state AND database immediately
-              setManualPageInput(String(newVal));
-              handlePagesChange(newVal); 
-            }}
-            className="w-full h-2 rounded-full appearance-none cursor-pointer accent-primary"
-            style={{
-              background: `linear-gradient(to right, ${accentColor} ${progressPercent}%, ${tintedSurfaceStrong} ${progressPercent}%)`,
-              // This CSS ensures the slider thumb matches your theme color
-              WebkitAppearance: 'none',
-            }}
-          />
+  type="range"
+  min="0"
+  max={book.totalPages}
+  value={book.pagesRead} // 👈 Links directly to the context value
+  onChange={(e) => {
+    const newVal = parseInt(e.target.value, 10);
+    // Directly trigger the context update
+    handlePagesChange(newVal); 
+    setManualPageInput(String(newVal));
+  }}
+  className="w-full h-2 rounded-full appearance-none cursor-pointer"
+  style={{
+    background: `linear-gradient(to right, ${accentColor} ${(book.pagesRead / book.totalPages) * 100}%, ${tintedSurfaceStrong} ${(book.pagesRead / book.totalPages) * 100}%)`,
+    WebkitAppearance: 'none',
+  }}
+/>
           
           <div className="flex justify-between items-end mt-2">
             <div className="flex flex-col">
